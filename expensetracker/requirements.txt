@@ -1,0 +1,9 @@
+Django>=5.2.6
+djangorestframework
+djangorestframework-simplejwt
+drf-spectacular
+numpy
+pandas
+scikit-learn
+joblib
+sentence-transformers
