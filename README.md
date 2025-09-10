@@ -94,6 +94,4 @@ Test files live under the `expenses/test` (or `expenses/tests`) directory — co
 
 ## Where to look next
 - API behavior and example requests: [API_DOCUMENTATION.md](expensetracker/API_DOCUMENTATION.md)
-- Manual walkthrough to validate endpoints: [manual_testing_guide.md](manual_testing_guide.md)
-- Project spec and evaluation criteria: [specifications.md](specifications.md)
 
