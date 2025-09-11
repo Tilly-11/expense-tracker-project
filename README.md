@@ -14,8 +14,7 @@ Prerequisites (Windows)
 - Recommended: create an isolated virtual environment
 
 Quick start (PowerShell)
-1. Open terminal at project root:
-   cd "c:\Users\Shamel\Documents\expense-tracker"
+1. Open terminal at project root
 
 2. Create and activate a virtual environment:
    - Create: python -m venv .venv
