@@ -11,18 +11,22 @@ class ExpenseSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         request = self.context.get('request')
+        user = None
         # set user
         if request and hasattr(request, 'user'):
-            validated_data['user'] = request.user
+            user = request.user
+            validated_data['user'] = user
 
         description = validated_data.get('description', '') or ''
         supplied_category = validated_data.get('category', '').strip()
 
         # Only call AI if no category provided
         if not supplied_category:
-            label, conf = predict_category(description)
+            label, conf = predict_category(description, user)
             validated_data['predicted_category'] = label
             validated_data['ai_confidence'] = conf
+            # If AI is uncertain, we still set the predicted category but mark it as uncertain
+            # The frontend can decide how to handle this (e.g., prompt user)
             validated_data['category'] = label  # default to predicted category
             validated_data['user_override'] = False
         else:

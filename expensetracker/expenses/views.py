@@ -97,6 +97,15 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         expense.category = category
         expense.user_override = True
         expense.save()
+        
+        # Update user's AI model with this feedback
+        try:
+            from .ai_utils import update_user_model_with_feedback
+            update_user_model_with_feedback(request.user, expense.description, category)
+        except Exception as e:
+            # Log the error but don't fail the request
+            print(f"Error updating user model: {e}")
+        
         return Response(ExpenseSerializer(expense).data)
 
 

@@ -61,7 +61,7 @@ Authorization: Bearer your_access_token_here
 
 **Endpoint:** `POST /api/expenses/`
 
-**What it does:** Adds a new expense. If you don't specify a category, the AI will predict one for you.
+**What it does:** Adds a new expense. If you don't specify a category, the AI will predict one for you. The AI uses a user-specific model that learns from your previous expense categorizations. If the AI is uncertain about the category (confidence below 70%), it will still make a prediction, but you should review and confirm it. You can also manually override any AI prediction.
 
 **What you can send:**
 ```json
@@ -92,6 +92,23 @@ Or with a specific category:
   "category": "Food",
   "predicted_category": "Food",
   "ai_confidence": 0.95,
+  "user_override": false,
+  "date": "2023-06-15",
+  "created_at": "2023-06-15T10:30:00Z",
+  "updated_at": "2023-06-15T10:30:00Z"
+}
+```
+
+If the AI is uncertain, you might see:
+```json
+{
+  "id": 1,
+  "user": 1,
+  "amount": "25.99",
+  "description": "Groceries from Walmart",
+  "category": "Uncertain",
+  "predicted_category": "Uncertain",
+  "ai_confidence": 0.45,
   "user_override": false,
   "date": "2023-06-15",
   "created_at": "2023-06-15T10:30:00Z",
@@ -130,7 +147,7 @@ Or with a specific category:
 
 **Endpoint:** `POST /api/expenses/{id}/override/`
 
-**What it does:** Manually sets the category for an expense, overriding the AI prediction.
+**What it does:** Manually sets the category for an expense, overriding the AI prediction. This feedback is used to improve the user-specific AI model.
 
 **What you need to send:**
 ```json
