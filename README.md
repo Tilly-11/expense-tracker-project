@@ -7,6 +7,7 @@ Important files
 - App routes: [expensetracker/expenses/urls.py](expensetracker/expenses/urls.py)
 - Model artifact: [artifacts/model.joblib](artifacts/model.joblib)
 - Project spec: [specifications.md](specifications.md)
+- AI Training Instructions: [TRAINING_INSTRUCTIONS.md](TRAINING_INSTRUCTIONS.md)
 
 Prerequisites (Windows)
 - Python 3.10+ (or the version your environment uses)
@@ -64,6 +65,7 @@ AI model notes
 - The system now supports user-specific AI models that learn from your expense categorization patterns.
 - If the model file is missing or incompatible the AI endpoints may return errors — check log output for file-not-found or deserialization errors.
 - The AI will indicate when it's uncertain about a prediction (confidence < 70%), allowing for better user interaction.
+- For best results, follow the training instructions in [TRAINING_INSTRUCTIONS.md](TRAINING_INSTRUCTIONS.md).
 
 Running tests
 ```
@@ -92,3 +94,4 @@ Where to look next
 - Inspect app routes: open [expensetracker/expenses/urls.py](expensetracker/expenses/urls.py)
 - Inspect project routing and API mounting: [expensetracker/expensetracker/urls.py](expensetracker/expensetracker/urls.py)
 - Model artifact and sample phrases: [artifacts/model.joblib](artifacts/model.joblib)
+- AI Training Instructions: [TRAINING_INSTRUCTIONS.md](TRAINING_INSTRUCTIONS.md)
