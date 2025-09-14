@@ -165,7 +165,7 @@ class InsightsAPIView(APIView):
             for c in top_cat_qs
         ]
 
-        # Use the more sophisticated anomaly detection
+        # Anomaly detection
         anomalies = detect_anomalies_for_user(user)
 
         return Response({

@@ -1,133 +1,99 @@
-# expenses/ai.py
+# expenses/ai_utils.py
 import os
 from typing import Tuple, Optional
 from django.contrib.auth import get_user_model
-from expenses.ai.sentence_classifier import SimpleCategoryModel
-from expenses.ai.user_model import UserCategoryModel
+from transformers import pipeline
+import torch
 
 User = get_user_model()
 
-# Global fallback model (the original shared model)
-_global_model = None
+# Pre-trained zero-shot classification model
+_classifier = None
 # Minimum confidence threshold for a prediction to be considered certain
 CONFIDENCE_THRESHOLD = 0.7
 
-def _load_global_model():
-    """Load the global fallback model"""
-    global _global_model
-    if _global_model is None:
-        try:
-            _global_model = SimpleCategoryModel.load_or_default()
-        except Exception:
-            # Fallback to a default model if loading fails
-            _global_model = SimpleCategoryModel()
-            # Enhanced training data with more categories and examples
-            X = [
-                # Shopping
-                "bought new shoes", "clothes shopping", "new t-shirt", "jeans from h&m",
-                "nike sneakers", "shopping mall purchases", "accessories from zara",
-                
-                # Food & Drink
-                "coffee at starbucks", "lunch at restaurant", "groceries shopping",
-                "dinner with friends", "takeout food", "cafe breakfast",
-                
-                # Transport
-                "uber ride home", "taxi to work", "bus ticket", "train pass",
-                "monthly metro card", "bolt ride airport",
-                
-                # Entertainment
-                "movie tickets", "concert tickets", "netflix subscription",
-                "theater show", "museum entry", "theme park",
-                
-                # Utilities
-                "electricity bill", "water bill", "internet payment",
-                "phone bill", "gas bill", "utility payment",
-                
-                # Rent
-                "monthly rent", "apartment payment", "housing rent",
-                
-                # Healthcare
-                "doctor visit", "medicine", "pharmacy purchase",
-                "medical checkup", "dental cleaning"
-            ]
-            
-            y = [
-                # Shopping categories
-                "Shopping", "Shopping", "Shopping", "Shopping",
-                "Shopping", "Shopping", "Shopping",
-                
-                # Food categories
-                "Food & Drink", "Food & Drink", "Groceries",
-                "Food & Drink", "Food & Drink", "Food & Drink",
-                
-                # Transport categories
-                "Transport", "Transport", "Transport", "Transport",
-                "Transport", "Transport",
-                
-                # Entertainment categories
-                "Entertainment", "Entertainment", "Entertainment",
-                "Entertainment", "Entertainment", "Entertainment",
-                
-                # Utilities categories
-                "Utilities", "Utilities", "Utilities",
-                "Utilities", "Utilities", "Utilities",
-                
-                # Rent categories
-                "Rent", "Rent", "Rent",
-                
-                # Healthcare categories
-                "Healthcare", "Healthcare", "Healthcare",
-                "Healthcare", "Healthcare"
-            ]
-            
-            _global_model.train(X, y, random_state=42)
-    return _global_model
+# Default expense categories
+DEFAULT_CATEGORIES = [
+    "Food & Drink",
+    "Groceries",
+    "Transport",
+    "Entertainment",
+    "Utilities",
+    "Rent",
+    "Healthcare",
+    "Shopping",
+    "Other"
+]
 
-def get_user_model(user: User) -> UserCategoryModel:
+def _load_classifier():
+    """Load the pre-trained zero-shot classification model"""
+    global _classifier
+    if _classifier is None:
+        # Use a pre-trained model for zero-shot classification
+        # This model can classify text into any categories without retraining
+        try:
+            _classifier = pipeline(
+                "zero-shot-classification",
+                model="facebook/bart-large-mnli",
+                device=0 if torch.cuda.is_available() else -1  # Use GPU if available
+            )
+        except Exception as e:
+            print(f"Error loading classifier: {e}")
+            # Fallback to CPU if GPU fails
+            _classifier = pipeline(
+                "zero-shot-classification",
+                model="facebook/bart-large-mnli",
+                device=-1
+            )
+    return _classifier
+
+def get_user_categories(user: User) -> list:
     """
-    Load or create a user-specific model.
+    Get user-specific categories or return default categories.
+    In a more advanced implementation, this could retrieve categories
+    that the user has previously used or defined.
     """
-    if user.is_authenticated:
-        return UserCategoryModel.load_or_default(user.id)
-    return None
+    if user and user.is_authenticated:
+        # For now, we'll use default categories for all users
+        # In a more advanced implementation, we could customize this per user
+        return DEFAULT_CATEGORIES
+    return DEFAULT_CATEGORIES
 
 def predict_category(text: str, user: Optional[User] = None) -> Tuple[str, float]:
     """
-    Returns (predicted_label, confidence_score) using user-specific or global model.
+    Returns (predicted_label, confidence_score) using a pre-trained zero-shot model.
     If confidence is below threshold, returns ("Uncertain", confidence).
     """
-    model_to_use = _global_model
+    # Load the classifier
+    classifier = _load_classifier()
     
-    # Try to use user-specific model if user is provided
-    if user and user.is_authenticated:
-        user_model = get_user_model(user)
-        if user_model and user_model.is_trained():
-            model_to_use = user_model
-        else:
-            # If user model isn't trained, fall back to global model
-            model_to_use = _load_global_model()
-    else:
-        # If no user or not authenticated, use global model
-        model_to_use = _load_global_model()
+    # Get categories (user-specific or default)
+    categories = get_user_categories(user)
     
     try:
-        predictions = model_to_use.predict([text])
-        if predictions and len(predictions) > 0:
-            label, confidence = predictions[0]
+        # Perform zero-shot classification
+        result = classifier(text, categories)
+        
+        # Get the top prediction
+        if result and 'labels' in result and 'scores' in result:
+            label = result['labels'][0]
+            confidence = result['scores'][0]
+            
             # If confidence is below threshold, mark as uncertain
             if confidence < CONFIDENCE_THRESHOLD:
                 return "Uncertain", confidence
             return label, confidence
-    except Exception:
+    except Exception as e:
+        print(f"Error in prediction: {e}")
         # Fallback rule-based if model prediction fails
         pass
     
     # Fallback rule-based
     txt = text.lower()
-    if any(w in txt for w in ['uber', 'bus', 'taxi', 'uber', 'bolt']):
+    if any(w in txt for w in ['uber', 'bus', 'taxi', 'bolt']):
         return 'Transport', 0.6
     if any(w in txt for w in ['restaurant', 'lunch', 'dinner', 'coffee', 'starbucks', 'kfc', 'grocer', 'grocery']):
-        return 'Food', 0.6
+        return 'Food & Drink', 0.6
     if any(w in txt for w in ['electric', 'water', 'bill']):
         return 'Utilities', 0.6
     if any(w in txt for w in ['clothes', 'shoe', 'shopping', 'mall', 'store', 'zara', 'h&m']):
@@ -136,36 +102,22 @@ def predict_category(text: str, user: Optional[User] = None) -> Tuple[str, float
 
 def update_user_model_with_feedback(user: User, text: str, category: str):
     """
-    Update the user's model with a new training example.
+    With the zero-shot approach, we don't need to update a trained model.
+    Instead, we could store the user's preferences or feedback for other purposes.
+    For example, we could track which categories a user commonly uses.
     """
+    # In this implementation, we don't need to update a model since we're using
+    # a pre-trained zero-shot classifier. However, we could store this feedback
+    # for analytics or to customize the category list for the user in the future.
+    
     if not user.is_authenticated:
         return
         
-    user_model = get_user_model(user)
-    if not user_model:
-        user_model = UserCategoryModel(user_id=user.id)
+    # For now, we'll just log that this feedback was provided
+    print(f"User {user.id} provided feedback: '{text}' -> '{category}'")
     
-    # For simplicity, we'll do a full retrain with the new data
-    # In a production environment, you might want to collect examples
-    # and do batch updates or use partial_fit more effectively
-    try:
-        # Get existing training data for this user from the database
-        # This is a simplified approach - in reality, you might want to store
-        # training examples in a separate table or cache
-        from expenses.models import Expense
-        user_expenses = Expense.objects.filter(user=user, user_override=True).exclude(category__isnull=True).exclude(category__exact='')
-        
-        X_texts = [e.description for e in user_expenses]
-        y_labels = [e.category for e in user_expenses]
-        
-        # Add the new example
-        X_texts.append(text)
-        y_labels.append(category)
-        
-        # Retrain the model
-        if len(X_texts) > 0:
-            user_model.train(X_texts, y_labels)
-            user_model.save()
-    except Exception as e:
-        # Log the error or handle it appropriately
-        print(f"Error updating user model for user {user.id}: {e}")
+    # In a more advanced implementation, you might:
+    # 1. Store this feedback in a database for analytics
+    # 2. Customize the category list for this user based on their preferences
+    # 3. Adjust the confidence threshold based on user feedback
+    pass

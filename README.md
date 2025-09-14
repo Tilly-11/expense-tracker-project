@@ -61,11 +61,10 @@ Quick manual API checks (replace `<endpoint>` with real paths from [expensetrack
   ```
 
 AI model notes
-- Classification model artifact: [artifacts/model.joblib](artifacts/model.joblib). Ensure `joblib` and `scikit-learn` are installed to load this file.
-- The system now supports user-specific AI models that learn from your expense categorization patterns.
-- If the model file is missing or incompatible the AI endpoints may return errors — check log output for file-not-found or deserialization errors.
+- The system now uses a pre-trained zero-shot classification model (facebook/bart-large-mnli) for expense categorization.
+- This approach eliminates the need for training custom models and provides immediate, accurate categorization.
+- No model artifacts need to be stored or loaded, making the system more lightweight and easier to maintain.
 - The AI will indicate when it's uncertain about a prediction (confidence < 70%), allowing for better user interaction.
-- For best results, follow the training instructions in [TRAINING_INSTRUCTIONS.md](TRAINING_INSTRUCTIONS.md).
 
 Running tests
 ```
@@ -77,10 +76,10 @@ python expensetracker/manage.py test
   pip install pytest pytest-django
   pytest
   ```
-- For deterministic AI-related tests, ensure tests set fixed random seeds and that model artifacts exist or are mocked.
+- For deterministic AI-related tests, ensure tests set fixed random seeds.
 
 Troubleshooting
-- If endpoints 500, check server logs in the terminal for missing imports, missing model files, or migration issues.
+- If endpoints 500, check server logs in the terminal for missing imports or migration issues.
 - To list URL patterns (install django-extensions):
   ```
   pip install django-extensions
@@ -93,5 +92,4 @@ Troubleshooting
 Where to look next
 - Inspect app routes: open [expensetracker/expenses/urls.py](expensetracker/expenses/urls.py)
 - Inspect project routing and API mounting: [expensetracker/expensetracker/urls.py](expensetracker/expensetracker/urls.py)
-- Model artifact and sample phrases: [artifacts/model.joblib](artifacts/model.joblib)
-- AI Training Instructions: [TRAINING_INSTRUCTIONS.md](TRAINING_INSTRUCTIONS.md)
+- AI implementation: [expensetracker/expenses/ai_utils.py](expensetracker/expenses/ai_utils.py)
